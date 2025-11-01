@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-<title>Volleyball Budget — v11 (PA + All Players)</title>
+<title>Volleyball Budget — v12 (Big Board + Fix)</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
@@ -71,16 +71,25 @@
   .player-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #334155;border-radius:999px;padding:8px 12px;margin:4px 6px;cursor:pointer}
   .player-chip.active{background:#2a3a55}
   .fatigue{font-size:11px;color:#a3b1c2}
+
+  /* Big Budget Board */
+  .bigboard{position:fixed;inset:0;background:#000c;backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9999}
+  .bigboard.show{display:flex}
+  .bigwrap{background:#0b1120;border:1px solid #1f2a44;border-radius:24px;box-shadow:0 10px 40px rgba(0,0,0,.6);padding:20px 26px;text-align:center;max-width:92vw}
+  .bignum{font-size:20vh;line-height:1;font-weight:900;letter-spacing:2px}
+  .bigcall{margin-top:8px;font-size:3vh;font-weight:800;opacity:.9}
+  .bighint{margin-top:6px;font-size:2vh;color:#a8b1c7}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>🏐 Volleyball Budget — v11</h1>
+    <h1>🏐 Volleyball Budget — v12</h1>
     <div class="row">
       <div class="pill" id="scorePill">Set <span id="setNum">1</span> • Score: <span id="us">0</span> – <span id="them">0</span></div>
       <div class="pill" id="callPill">Call: —</div>
       <div class="pill" id="budgetPill" style="font-size:22px">B: <span id="bVal">0.50</span></div>
+      <button class="btn small" id="openBig">📣 Big Budget</button>
     </div>
     <div class="meter" style="margin-top:8px"><div class="fill" id="bar"></div></div>
 
@@ -191,6 +200,15 @@
   </div>
 </div>
 
+<!-- Big Budget Overlay -->
+<div class="bigboard" id="bigBoard">
+  <div class="bigwrap" id="bigWrap">
+    <div class="bignum" id="bigNum">0.50</div>
+    <div class="bigcall" id="bigCall">STANDARD</div>
+    <div class="bighint">Tap anywhere to close</div>
+  </div>
+</div>
+
 <!-- Error Sharing Sheet -->
 <div class="sheet" id="errSheet">
   <h2>Mark player errors (this rally)</h2>
@@ -217,6 +235,7 @@ let wTeam=0.70;
 let fatigueStep=0.03; // per extra set beyond 2
 let benchDecay=0.50;  // toward 0.5
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
+let bigOpen=false;
 
 const playersDefault=[
   {name:'Labeeb',  status:'Playing', pa:0.70, consec:0, playedThisSet:false},
@@ -253,6 +272,17 @@ function bFinal(){
   return clamp(raw,0,1);
 }
 function flash(el){ el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),140); }
+function updateBigBoard(finalB, callText){
+  const big=document.getElementById('bigBoard');
+  const num=document.getElementById('bigNum');
+  const call=document.getElementById('bigCall');
+  const wrap=document.getElementById('bigWrap');
+  num.textContent=finalB.toFixed(2);
+  call.textContent=callText;
+  if(finalB<0.35){ wrap.style.borderColor='#1e3a8a'; num.style.color='#60a5fa'; call.style.color='#93c5fd'; }
+  else if(finalB<0.65){ wrap.style.borderColor='#14532d'; num.style.color='#34d399'; call.style.color='#86efac'; }
+  else{ wrap.style.borderColor='#92400e'; num.style.color='#fde68a'; call.style.color='#fcd34d'; }
+}
 function updateUI(){
   const team=bTeam(), playersAvg=bPlayers();
   const raw=bRawCombined(team, playersAvg);
@@ -264,17 +294,13 @@ function updateUI(){
   document.getElementById('bTeamShow').textContent=team.toFixed(2);
   document.getElementById('bPlayersShow').textContent=playersAvg.toFixed(2);
   document.getElementById('bRawShow').textContent=raw.toFixed(2);
-  document.getElementById('mShow').textContent=(m>0?('+'+m):m);
-  document.getElementById('wShow').textContent=(w>=0?('+'+w.toFixed(2)):w.toFixed(2));
-  document.getElementById('cShow').textContent=c.toFixed(2);
-  document.getElementById('rShow').textContent=r.toFixed(2);
-  document.getElementById('kShow').textContent=(kk>=0?('+'+kk.toFixed(2)):kk.toFixed(2));
 
   const bar=document.getElementById('bar'); bar.style.width=(finalB*100)+'%';
   const callPill=document.getElementById('callPill'); const budgetPill=document.getElementById('budgetPill');
-  if(finalB<0.35){ callPill.className='pill save'; callPill.textContent='Call: SAVE'; bar.style.background='#0a84ff'; budgetPill.className='pill save'; }
-  else if(finalB<0.65){ callPill.className='pill std'; callPill.textContent='Call: STANDARD'; bar.style.background='#34c759'; budgetPill.className='pill std'; }
-  else{ callPill.className='pill spend'; callPill.textContent='Call: SPEND'; bar.style.background='#ffd60a'; budgetPill.className='pill spend'; }
+  let callText='STANDARD';
+  if(finalB<0.35){ callPill.className='pill save'; callPill.textContent='Call: SAVE'; bar.style.background='#0a84ff'; budgetPill.className='pill save'; callText='SAVE'; }
+  else if(finalB<0.65){ callPill.className='pill std'; callPill.textContent='Call: STANDARD'; bar.style.background='#34c759'; budgetPill.className='pill std'; callText='STANDARD'; }
+  else{ callPill.className='pill spend'; callPill.textContent='Call: SPEND'; bar.style.background='#ffd60a'; budgetPill.className='pill spend'; callText='SPEND'; }
   flash(budgetPill);
 
   document.getElementById('wTeamLabel').textContent=wTeam.toFixed(2);
@@ -285,10 +311,10 @@ function updateUI(){
   const on=players.filter(p=>p.status==='Playing');
   const avg=on.length? (on.reduce((s,p)=>s+(p.pa||0.6),0)/on.length) : 0;
   document.getElementById('onCourtAvg').textContent = `On‑court avg PA: ${avg.toFixed(2)} (${on.length} players)`;
-  document.getElementById('clipX').textContent=raw.toFixed(2);
-  document.getElementById('clipOut').textContent=clamp(raw,0,1).toFixed(2);
   document.getElementById('us').textContent=us;
   document.getElementById('them').textContent=them;
+
+  if (bigOpen){ updateBigBoard(finalB, callText); }
 }
 function pushHistory(extra={}){
   history.push({
@@ -418,20 +444,6 @@ function nextSet(){
   logEvent('next_set',{});
   renderPlayers(); updateUI();
 }
-const cycles={ m:[-1,0,1], w:[-1,-0.33,0,0.33,1], c:[1.0,0.6,0.3], r:[0.3,0.5,0.7], k:[-0.10,-0.05,0,0.05,0.10] };
-let idx={m:1,w:2,c:0,r:1,k:2};
-function cycle(key){
-  idx[key]=(idx[key]+1)%cycles[key].length;
-  const v=cycles[key][idx[key]];
-  if(key==='m') mManual=v;
-  if(key==='w') wManual=v;
-  if(key==='c') cManual=v;
-  if(key==='r') rManual=v;
-  if(key==='k') kManual=v;
-  pushHistory({event:`cycle:${key}`,value:v});
-  logEvent('cycle',{key,value:v});
-  updateUI();
-}
 function renderPlayers(){
   const tbody=document.querySelector('#playersTable tbody');
   tbody.innerHTML='';
@@ -472,7 +484,6 @@ function renderPlayers(){
   }));
 }
 function exportCSV(){
-  // Build dynamic headers including PA columns
   const baseHeaders=['timestamp','set','type','us','them','m','w','c','r','k','B_team','B_players','B_raw','B_final','mode','wTeam','fatigueStep','benchDecay'];
   const paHeaders = players.map(p => 'PA_'+p.name);
   const headers=[...baseHeaders, ...paHeaders];
@@ -502,31 +513,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('reset').addEventListener('click',resetAll);
   document.getElementById('nextSet').addEventListener('click',nextSet);
   document.getElementById('exportCsv').addEventListener('click',exportCSV);
-  document.getElementById('mChip').addEventListener('click',()=>cycle('m'));
-  document.getElementById('wChip').addEventListener('click',()=>cycle('w'));
-  document.getElementById('cChip').addEventListener('click',()=>cycle('c'));
-  document.getElementById('rChip').addEventListener('click',()=>cycle('r'));
-  document.getElementById('kChip').addEventListener('click',()=>cycle('k'));
-  document.getElementById('subHint').addEventListener('click',()=>{
-    const B=bFinal();
-    const on = players.filter(p=>p.status==='Playing').map(p=>({name:p.name,val:p.pa,consec:p.consec}));
-    const bench = players.filter(p=>p.status==='Sub').map(p=>({name:p.name,val:p.pa,consec:p.consec}));
-    let msg='';
-    if(on.length===0||bench.length===0){
-      msg='Mark Playing/Sub to get a hint.';
-    } else {
-      on.sort((a,b)=>a.val-b.val);
-      bench.sort((a,b)=>b.val-a.val);
-      if (B < 0.35){
-        msg=`B=${B.toFixed(2)} (low). Swap OUT: ${on[0].name} (${on[0].val.toFixed(2)}, consec ${on[0].consec}) ↔ IN: ${bench[0].name} (${bench[0].val.toFixed(2)}, consec ${bench[0].consec}).`;
-      } else if (B >= 0.65){
-        msg=`B=${B.toFixed(2)} (high). Ride hot hand; sub only for fatigue/role. Lowest on‑court: ${on[0].name} (${on[0].val.toFixed(2)}, consec ${on[0].consec}).`;
-      } else {
-        msg=`B=${B.toFixed(2)} (standard). Situational sub. Lowest on‑court: ${on[0].name}; best bench: ${bench[0].name}.`;
-      }
-    }
-    document.getElementById('hint').textContent=msg;
-  });
   document.getElementById('usePlayers').addEventListener('change',updateUI);
   document.getElementById('wTeam').addEventListener('input',e=>{ wTeam=parseFloat(e.target.value)||0; updateUI(); });
   document.querySelectorAll('#modeSeg button').forEach(btn=>{
@@ -536,8 +522,17 @@ window.addEventListener('DOMContentLoaded',()=>{
       updateUI();
     });
   });
-  document.getElementById('fatigueStep').addEventListener('input',e=>{ fatigueStep=parseFloat(e.target.value)||0; updateControlsText(); renderPlayers(); updateUI(); });
-  document.getElementById('benchDecay').addEventListener('input',e=>{ benchDecay=parseFloat(e.target.value)||0; updateControlsText(); });
+  // Big Board controls
+  document.getElementById('openBig').addEventListener('click',()=>{
+    bigOpen=true;
+    document.getElementById('bigBoard').classList.add('show');
+    updateUI();
+  });
+  document.getElementById('bigBoard').addEventListener('click',()=>{
+    bigOpen=false;
+    document.getElementById('bigBoard').classList.remove('show');
+  });
+
   renderPlayers(); updateUI();
 });
 </script>
