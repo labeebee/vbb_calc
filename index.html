@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-<title>Volleyball Budget — v8 (Weights + Bottleneck + Export)</title>
+<title>Volleyball Budget — v11 (PA + All Players)</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root { --blue:#0a84ff; --green:#34c759; --yellow:#ffd60a; --bg:#0b0f14; --card:#11151d; --border:#1f2937; --muted:#99a3ad; --text:#f2f2f7; }
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;}
-  .wrap{max-width:980px;margin:0 auto;padding:16px;padding-bottom:calc(44px + env(safe-area-inset-bottom));}
+  .wrap{max-width:980px;margin:0 auto;padding:16px;padding-bottom:calc(56px + env(safe-area-inset-bottom));}
   .card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);margin-bottom:12px}
   h1{font-size:20px;margin:0 0 10px;font-weight:700;letter-spacing:.2px}
   h2{font-size:16px;margin:0 0 10px;color:#cbd5e1;font-weight:700}
@@ -31,14 +31,14 @@
   .muted{color:var(--muted)}
   .mono{font-family:ui-monospace,Menlo,Monaco,Consolas,"Roboto Mono",monospace;font-size:12px}
   table{width:100%;border-collapse:separate;border-spacing:0 10px}
-  td,th{padding:10px}
+  td,th{padding:10px;vertical-align:middle}
   th{font-size:12px;color:#cbd5e1;text-align:left;font-weight:700;letter-spacing:.3px}
   tr{background:#0f172a;border-radius:14px}
   tr td:first-child{border-top-left-radius:14px;border-bottom-left-radius:14px}
   tr td:last-child{border-top-right-radius:14px;border-bottom-right-radius:14px}
   input[type="text"],input[type="number"],input[type="range"]{padding:8px 10px;border-radius:10px;border:1px solid #233042;background:#101826;color:#fff;width:100%}
   input[type="range"]{padding:0;height:32px}
-  .tag{padding:6px 10px;border-radius:999px;border:1px solid #334155;font-size:12px;font-weight:700;cursor:pointer}
+  .tag{padding:6px 10px;border-radius:999px;border:1px solid #334155;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
   .tag.play{background:#0b2f1f;color:#a7f3d0;border-color:#14532d}
   .tag.sub{background:#3a2a0c;color:#fde68a;border-color:#92400e}
   .flash{outline:2px solid #64748b;outline-offset:2px;transition:outline .15s}
@@ -51,26 +51,34 @@
   .seg{display:inline-flex;border:1px solid #334155;border-radius:12px;overflow:hidden}
   .seg button{padding:8px 12px;border:0;background:#0f172a;color:#cbd5e1;font-weight:700}
   .seg button.active{background:#1b283a;color:#fff}
+  details{border:1px solid #233042;background:#0f172a;border-radius:14px;padding:10px;margin:8px 0}
+  summary{cursor:pointer;font-weight:800;color:#e2e8f0;outline:none}
+  details p{margin:8px 0;color:#cbd5e1}
+  .ex-note{font-size:12px;color:#94a3b8}
+  /* Mobile layout fix for table labels */
   @media (max-width:560px){
     .row .btn{flex:1 1 48%}
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
-    tr{margin-bottom:8px;padding:8px}
-    td{display:flex;justify-content:space-between;align-items:center;padding:6px 8px}
-    td::before{content:attr(data-label);font-weight:700;color:#94a3b8}
+    tr{margin-bottom:10px;padding:8px}
+    td{display:grid;grid-template-columns: 44% 56%;gap:6px;align-items:start;padding:6px 8px;word-break:break-word}
+    td::before{content:attr(data-label);font-weight:700;color:#94a3b8;white-space:normal}
+    input[type="text"]{min-width:0}
+    .tag{white-space:normal}
   }
   .sheet{position:fixed;left:0;right:0;bottom:-100%;background:#0e1622;border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid #243042;box-shadow:0 -10px 30px rgba(0,0,0,.4);transition:bottom .18s;padding:12px 14px;max-height:70vh;overflow:auto}
   .sheet.open{bottom:0}
   .player-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #334155;border-radius:999px;padding:8px 12px;margin:4px 6px;cursor:pointer}
   .player-chip.active{background:#2a3a55}
+  .fatigue{font-size:11px;color:#a3b1c2}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>🏐 Volleyball Budget — v8</h1>
+    <h1>🏐 Volleyball Budget — v11</h1>
     <div class="row">
-      <div class="pill" id="scorePill">Score: <span id="us">0</span> – <span id="them">0</span></div>
+      <div class="pill" id="scorePill">Set <span id="setNum">1</span> • Score: <span id="us">0</span> – <span id="them">0</span></div>
       <div class="pill" id="callPill">Call: —</div>
       <div class="pill" id="budgetPill" style="font-size:22px">B: <span id="bVal">0.50</span></div>
     </div>
@@ -91,10 +99,8 @@
     </div>
 
     <div class="muted mono" style="margin-top:6px">B_team = clip(0.3·m + 0.3·w + 0.3·c + 0.1·r + k, 0..1)</div>
-    <div class="muted mono">B_players = avg(mini) of <b>Playing</b></div>
-    <div class="muted mono">B_final =
-      <span id="formulaText">clip(w·B_team + (1−w)·B_players, 0..1)</span>
-    </div>
+    <div class="muted mono">B_players = avg(<b>PA</b>) of <b>Playing</b></div>
+    <div class="muted mono">B_final = <span id="formulaText">clip(w·B_team + (1−w)·B_players, 0..1)</span></div>
     <div class="muted mono" style="margin-top:6px">B_team: <span id="bTeamShow">0.50</span> • B_players: <span id="bPlayersShow">0.65</span> • B_raw: <span id="bRawShow">0.50</span></div>
   </div>
 
@@ -108,27 +114,33 @@
       <button class="btn small" id="errTeam">⚠️ Team error</button>
       <button class="btn small" id="errPlayers">🧯 Errors (players)</button>
       <button class="btn small" id="undo">↩️ Undo</button>
-      <button class="btn small" id="reset">♻️ Reset</button>
+      <button class="btn small" id="reset">♻️ Reset (match)</button>
+      <button class="btn small" id="nextSet">➡️ Next Set</button>
       <button class="btn small" id="exportCsv">⬇️ Export CSV</button>
     </div>
   </div>
 
   <div class="card">
-    <h2>Single‑Tap Variables</h2>
-    <div class="row">
-      <span class="chip" id="mChip">m: <strong id="mShow">0</strong></span>
-      <span class="chip" id="wChip">w: <strong id="wShow">0.00</strong></span>
-      <span class="chip" id="cChip">c: <strong id="cShow">1.00</strong></span>
-      <span class="chip" id="rChip">r: <strong id="rShow">0.50</strong></span>
-      <span class="chip" id="kChip">k: <strong id="kShow">0.00</strong></span>
+    <h2>Fatigue & Carry‑forward</h2>
+    <div class="muted">On <b>Next Set</b>: players who appeared carry their <b>PA</b> forward; bench decays toward 0.5. If a player plays in <b>&gt;2 consecutive sets</b>, fatigue reduces PA per extra set.</div>
+    <div class="row" style="margin-top:8px">
+      <div class="col" style="flex:1 1 180px">
+        <label class="mono">Fatigue per extra set (default 0.03): <span id="fatigueStepLabel">0.03</span></label>
+        <input type="range" id="fatigueStep" min="0" max="0.10" step="0.01" value="0.03" />
+      </div>
+      <div class="col" style="flex:1 1 180px">
+        <label class="mono">Decay for bench toward 0.5 (default 0.50): <span id="benchDecayLabel">0.50</span></label>
+        <input type="range" id="benchDecay" min="0" max="1" step="0.05" value="0.50" />
+      </div>
     </div>
-    <div class="muted">Tap to cycle: m (−1/0/+1), w (−1…+1), c (1/0.6/0.3), r (0.3/0.5/0.7), k (−0.10…+0.10)</div>
   </div>
 
   <div class="card">
     <h2>Players (affect budget)</h2>
     <table id="playersTable">
-      <thead><tr><th>#</th><th>Name</th><th>Status</th><th>Mini‑budget</th><th>Touch</th><th>Tag</th></tr></thead>
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Status</th><th>PA (0–1)</th><th>Touch</th><th>Consec Sets</th><th>Fatigue</th></tr>
+      </thead>
       <tbody></tbody>
     </table>
     <div class="row" style="margin-top:8px">
@@ -139,9 +151,43 @@
   </div>
 
   <div class="card">
-    <h2>What is <code>clip(x, a, b)</code>?</h2>
-    <div class="muted">It “clamps” a value to a range. Definition: <span class="mono">clip(x,a,b) = max(a, min(x, b))</span>.</div>
-    <div class="muted" style="margin-top:6px">Live: <span class="mono">x=<span id="clipX">0.50</span> → clip(x, 0, 1) = <span id="clipOut">0.50</span></span></div>
+    <h2>ℹ️ Explainers (tap to expand)</h2>
+    <details><summary>Margin <span class="mono">(m)</span></summary>
+      <p>Score gap this moment. +1 if you’re ahead by ≥2, −1 if behind by ≤−2, else 0. Higher margin → more budget to spend.</p>
+      <p class="ex-note">Why: Big leads let you take calculated risks; big deficits suggest stabilizing until you claw back.</p>
+    </details>
+    <details><summary>Momentum <span class="mono">(w)</span></summary>
+      <p>Short‑term streak over last 3 rallies: wins minus losses, scaled to [−1,1]. Sustained wins lift budget; losses pull it down.</p>
+      <p class="ex-note">Why: Captures immediate rhythm without overreacting to a single point.</p>
+    </details>
+    <details><summary>Cleanliness <span class="mono">(c)</span></summary>
+      <p>Error tally over last few rallies: 1.00 (no errors), 0.60 (one), 0.30 (two+). Cleaner play permits bolder calls.</p>
+      <p class="ex-note">Why: If execution is messy, risk is more likely to backfire.</p>
+    </details>
+    <details><summary>Rhythm <span class="mono">(r)</span></summary>
+      <p>Coach/observer “vibe” slider (0.3/0.5/0.7). Represents composure, communication, serve‑receive comfort.</p>
+      <p class="ex-note">Why: Some nights the intangibles are real — bake them in, lightly.</p>
+    </details>
+    <details><summary>Confidence kick <span class="mono">(k)</span></summary>
+      <p>Quick bonus from risky plays: +0.10 for winning a 2‑ball (−0.10 if lost), +0.05/−0.05 for 3‑ball results.</p>
+      <p class="ex-note">Why: Success/failure on bold attempts should nudge the dial.</p>
+    </details>
+    <details><summary>Team budget <span class="mono">(B_team)</span></summary>
+      <p><span class="mono">clip(0.3·m + 0.3·w + 0.3·c + 0.1·r + k, 0..1)</span>. Aggregates team‑state; the core “how ready are we?” score.</p>
+    </details>
+    <details><summary>Players budget <span class="mono">(B_players)</span></summary>
+      <p>Average <b>PA</b> of on‑court players. Reflects individual allowance to take risk right now.</p>
+    </details>
+    <details><summary>Blend vs Bottleneck</summary>
+      <p><b>Blend:</b> <span class="mono">clip(w·B_team + (1−w)·B_players, 0..1)</span>. Smooth mix — good default for balanced teams.</p>
+      <p><b>Bottleneck:</b> <span class="mono">min(B_team, B_players)</span>. Conservative — the weaker of system vs individuals caps risk.</p>
+    </details>
+    <details><summary>Clipping <span class="mono">clip(x,0,1)</span></summary>
+      <p>Keeps budget in a usable 0..1 range: <span class="mono">max(0, min(x,1))</span>. Prevents runaway highs/lows and stabilizes calls.</p>
+    </details>
+    <details><summary>Fatigue & Bench decay</summary>
+      <p>On <b>Next Set</b>: appearances carry forward; bench decays toward 0.5 by a factor you control. Consecutive sets &gt;2 apply a fatigue penalty per extra set to <b>PA</b>.</p>
+    </details>
   </div>
 </div>
 
@@ -153,30 +199,33 @@
     <button class="btn small" id="applyErr">Apply penalties</button>
     <button class="btn small" id="closeErr">Close</button>
   </div>
-  <div class="muted" style="margin-top:6px">Penalty is shared: each selected player gets −0.03 to mini‑budget (clipped), and team cleanliness for this rally counts as an error.</div>
+  <div class="muted" style="margin-top:6px">Penalty is shared: each selected player gets −0.03 to <b>PA</b> (clipped), and team cleanliness for this rally counts as an error.</div>
 </div>
 
 <div class="footer"><div class="muted">Tip: Save to Files → open in Safari → Share → “Add to Home Screen” for app‑like feel.</div></div>
 
 <script>
+let setNumber=1;
 let us=0, them=0;
 let lastResults=[], lastErrors=[];
 let vibe=0.5, k=0;
 let mManual=null, wManual=null, cManual=null, rManual=null, kManual=null;
 let history=[];
-let eventLog=[]; // for CSV
-let mode='blend'; // 'blend' or 'bottleneck'
-let wTeam=0.70; // team weight for blend
+let eventLog=[];
+let mode='blend';
+let wTeam=0.70;
+let fatigueStep=0.03; // per extra set beyond 2
+let benchDecay=0.50;  // toward 0.5
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 
 const playersDefault=[
-  {name:'Labeeb',  status:'Playing', mini:0.70},
-  {name:'Jassim',  status:'Playing', mini:0.60},
-  {name:'Areej',   status:'Playing', mini:0.70},
-  {name:'Jawad',   status:'Playing', mini:0.60},
-  {name:'Samad',   status:'Playing', mini:0.70},
-  {name:'Shanoob', status:'Playing', mini:0.60},
-  {name:'Shamal',  status:'Sub',     mini:0.75},
+  {name:'Labeeb',  status:'Playing', pa:0.70, consec:0, playedThisSet:false},
+  {name:'Jassim',  status:'Playing', pa:0.60, consec:0, playedThisSet:false},
+  {name:'Areej',   status:'Playing', pa:0.70, consec:0, playedThisSet:false},
+  {name:'Jawad',   status:'Playing', pa:0.60, consec:0, playedThisSet:false},
+  {name:'Samad',   status:'Playing', pa:0.70, consec:0, playedThisSet:false},
+  {name:'Shanoob', status:'Playing', pa:0.60, consec:0, playedThisSet:false},
+  {name:'Shamal',  status:'Sub',     pa:0.75, consec:0, playedThisSet:false},
 ];
 let players=JSON.parse(JSON.stringify(playersDefault));
 
@@ -190,7 +239,7 @@ function bTeam(){ return clamp(bTeamRaw(),0,1); }
 function bPlayers(){
   const on=players.filter(p=>p.status==='Playing');
   if(on.length===0) return 0.5;
-  const avg=on.reduce((s,p)=>s+(p.mini||0.6),0)/on.length;
+  const avg=on.reduce((s,p)=>s+(p.pa||0.6),0)/on.length;
   return clamp(avg,0,1);
 }
 function bRawCombined(team, playersAvg){
@@ -203,15 +252,14 @@ function bFinal(){
   const raw=bRawCombined(team, playersAvg);
   return clamp(raw,0,1);
 }
-
 function flash(el){ el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),140); }
-
 function updateUI(){
   const team=bTeam(), playersAvg=bPlayers();
   const raw=bRawCombined(team, playersAvg);
   const finalB=clamp(raw,0,1);
   const m=marginVal(), w=momentumVal(), c=cleanlinessVal(), r=rVal(), kk=kVal();
 
+  document.getElementById('setNum').textContent=setNumber;
   document.getElementById('bVal').textContent=finalB.toFixed(2);
   document.getElementById('bTeamShow').textContent=team.toFixed(2);
   document.getElementById('bPlayersShow').textContent=playersAvg.toFixed(2);
@@ -229,52 +277,49 @@ function updateUI(){
   else{ callPill.className='pill spend'; callPill.textContent='Call: SPEND'; bar.style.background='#ffd60a'; budgetPill.className='pill spend'; }
   flash(budgetPill);
 
-  // Update labels
   document.getElementById('wTeamLabel').textContent=wTeam.toFixed(2);
   document.getElementById('wPlayersLabel').textContent=(1-wTeam).toFixed(2);
   document.getElementById('formulaText').textContent = (mode==='bottleneck')
     ? 'min(B_team, B_players)'
     : 'clip(w·B_team + (1−w)·B_players, 0..1)';
-
-  // on-court avg label
   const on=players.filter(p=>p.status==='Playing');
-  const avg=on.length? (on.reduce((s,p)=>s+(p.mini||0.6),0)/on.length) : 0;
-  document.getElementById('onCourtAvg').textContent = `On‑court avg mini: ${avg.toFixed(2)} (${on.length} players)`;
-
-  // clip demo
+  const avg=on.length? (on.reduce((s,p)=>s+(p.pa||0.6),0)/on.length) : 0;
+  document.getElementById('onCourtAvg').textContent = `On‑court avg PA: ${avg.toFixed(2)} (${on.length} players)`;
   document.getElementById('clipX').textContent=raw.toFixed(2);
   document.getElementById('clipOut').textContent=clamp(raw,0,1).toFixed(2);
-
-  // score pill
   document.getElementById('us').textContent=us;
   document.getElementById('them').textContent=them;
 }
-
 function pushHistory(extra={}){
   history.push({
-    us, them, lastResults:[...lastResults], lastErrors:[...lastErrors], vibe, k,
+    setNumber, us, them, lastResults:[...lastResults], lastErrors:[...lastErrors], vibe, k,
     mManual, wManual, cManual, rManual, kManual,
     players:JSON.parse(JSON.stringify(players)),
-    usePlayers:document.getElementById('usePlayers').checked, mode, wTeam,
+    usePlayers:document.getElementById('usePlayers').checked, mode, wTeam, fatigueStep, benchDecay,
     ...extra
   });
 }
-
+function snapshotPAs(){
+  const snap={};
+  players.forEach(p=>{ snap['PA_'+p.name]= (p.pa!==undefined? p.pa.toFixed(2):''); });
+  return snap;
+}
 function logEvent(type, extra={}){
   const team=bTeam(), playersAvg=bPlayers();
   const raw=bRawCombined(team, playersAvg);
   const finalB=clamp(raw,0,1);
   const timestamp=new Date().toISOString();
-  const entry={timestamp,type,us,them,
+  const entry={timestamp,set:setNumber,type,us,them,
     m:marginVal(), w:momentumVal(), c:cleanlinessVal(), r:rVal(), k:kVal(),
     B_team:team, B_players:playersAvg, B_raw:raw, B_final:finalB,
-    mode, wTeam,
+    mode, wTeam, fatigueStep, benchDecay,
+    ...snapshotPAs(),
     ...extra
   };
   eventLog.push(entry);
 }
-
 function rally(res,balls){
+  players.forEach(p=>{ if(p.status==='Playing') p.playedThisSet=true; });
   if(res==='win') us++; else them++;
   lastResults.push(res); if(lastResults.length>3) lastResults.shift();
   k = (balls==='2') ? ((res==='win')?+0.10:-0.10) : ((res==='win')?+0.05:-0.05);
@@ -283,7 +328,6 @@ function rally(res,balls){
   logEvent('rally',{result:res,balls});
   updateUI();
 }
-
 function markTeamErr(){
   if(lastErrors.length>0){
     lastErrors[lastErrors.length-1]=1;
@@ -292,8 +336,6 @@ function markTeamErr(){
     updateUI();
   }
 }
-
-// ----- Error sharing sheet -----
 function openErrSheet(){
   const sheet=document.getElementById('errSheet');
   const list=document.getElementById('errPlayersList');
@@ -312,7 +354,7 @@ function closeErrSheet(){ document.getElementById('errSheet').classList.remove('
 function applyErrPenalties(){
   const selected=[...document.querySelectorAll('.player-chip.active')].map(el=>el.dataset.name);
   if(selected.length>0){
-    players.forEach(p=>{ if(selected.includes(p.name)){ p.mini = clamp((p.mini||0.6)-0.03,0,1); } });
+    players.forEach(p=>{ if(selected.includes(p.name)){ p.pa = clamp((p.pa||0.6)-0.03,0,1); p.playedThisSet=true; } });
     renderPlayers();
     if(lastErrors.length>0){ lastErrors[lastErrors.length-1]=1; }
     pushHistory({event:'player_errors',selected:[...selected]});
@@ -320,31 +362,62 @@ function applyErrPenalties(){
   }
   updateUI(); closeErrSheet();
 }
-
 function undo(){
   if(history.length>0){
     const h=history.pop();
+    setNumber=h.setNumber;
     us=h.us; them=h.them; lastResults=[...h.lastResults]; lastErrors=[...h.lastErrors]; vibe=h.vibe; k=h.k;
     mManual=h.mManual; wManual=h.wManual; cManual=h.cManual; rManual=h.rManual; kManual=h.kManual;
     players=JSON.parse(JSON.stringify(h.players));
     document.getElementById('usePlayers').checked = h.usePlayers;
-    mode=h.mode; wTeam=h.wTeam;
+    mode=h.mode; wTeam=h.wTeam; fatigueStep=h.fatigueStep; benchDecay=h.benchDecay;
     document.getElementById('wTeam').value=wTeam;
+    document.getElementById('fatigueStep').value=fatigueStep.toFixed(2);
+    document.getElementById('benchDecay').value=benchDecay.toFixed(2);
+    updateControlsText();
     document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
     renderPlayers(); updateUI();
   }
 }
 function resetAll(){
+  setNumber=1;
   us=0; them=0; lastResults=[]; lastErrors=[]; vibe=0.5; k=0;
   mManual=wManual=cManual=rManual=kManual=null; history=[]; eventLog=[];
   players=JSON.parse(JSON.stringify(playersDefault));
-  mode='blend'; wTeam=0.70;
+  mode='blend'; wTeam=0.70; fatigueStep=0.03; benchDecay=0.50;
   document.getElementById('usePlayers').checked = true;
   document.getElementById('wTeam').value=wTeam;
+  document.getElementById('fatigueStep').value=fatigueStep.toFixed(2);
+  document.getElementById('benchDecay').value=benchDecay.toFixed(2);
+  updateControlsText();
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   renderPlayers(); updateUI();
 }
-
+function updateControlsText(){
+  document.getElementById('fatigueStepLabel').textContent=parseFloat(fatigueStep).toFixed(2);
+  document.getElementById('benchDecayLabel').textContent=parseFloat(benchDecay).toFixed(2);
+}
+function nextSet(){
+  players.forEach(p=>{
+    if(p.playedThisSet){
+      p.consec += 1;
+      const extra = Math.max(0, p.consec - 2);
+      const penalty = extra * fatigueStep;
+      if (extra > 0 && penalty > 0){
+        p.pa = clamp(p.pa - penalty, 0, 1);
+      }
+    } else {
+      p.consec = 0;
+      p.pa = clamp(0.5 + (p.pa - 0.5) * (1 - benchDecay), 0, 1);
+    }
+    p.playedThisSet = false;
+  });
+  setNumber += 1;
+  us=0; them=0; lastResults=[]; lastErrors=[]; vibe=0.5; k=0;
+  pushHistory({event:'next_set'});
+  logEvent('next_set',{});
+  renderPlayers(); updateUI();
+}
 const cycles={ m:[-1,0,1], w:[-1,-0.33,0,0.33,1], c:[1.0,0.6,0.3], r:[0.3,0.5,0.7], k:[-0.10,-0.05,0,0.05,0.10] };
 let idx={m:1,w:2,c:0,r:1,k:2};
 function cycle(key){
@@ -359,42 +432,50 @@ function cycle(key){
   logEvent('cycle',{key,value:v});
   updateUI();
 }
-
 function renderPlayers(){
   const tbody=document.querySelector('#playersTable tbody');
   tbody.innerHTML='';
   players.forEach((p,i)=>{
+    const extra=Math.max(0, p.consec - 2);
+    const fatigue=(extra>0)? (extra*fatigueStep): 0;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td data-label="#">${i+1}</td>
       <td data-label="Name"><input type="text" value="${p.name}" data-idx="${i}" class="pname" /></td>
       <td data-label="Status"><button class="tag ${p.status==='Playing'?'play':'sub'}" data-idx="${i}" data-role="toggle">${p.status}</button></td>
-      <td data-label="Mini"><input type="number" step="0.01" min="0" max="1" value="${p.mini.toFixed(2)}" data-idx="${i}" class="pmini" /></td>
+      <td data-label="PA (0–1)"><input type="number" step="0.01" min="0" max="1" value="${p.pa.toFixed(2)}" data-idx="${i}" class="ppa" /></td>
       <td data-label="Touch">
         <button class="tag play" data-idx="${i}" data-delta="0.05">👍 Good</button>
         <button class="tag sub" data-idx="${i}" data-delta="-0.05">⚠️ Error</button>
       </td>
-      <td data-label="Tag"><span class="tag ${p.status==='Playing'?'play':'sub'}">${p.status}</span></td>
+      <td data-label="Consec Sets"><span class="fatigue">${p.consec}</span></td>
+      <td data-label="Fatigue"><span class="fatigue">−${fatigue.toFixed(2)}</span></td>
     `;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.pname').forEach(el=>el.addEventListener('input',e=>{ players[e.target.dataset.idx].name=e.target.value; updateUI(); }));
   tbody.querySelectorAll('[data-role="toggle"]').forEach(el=>el.addEventListener('click',e=>{
-    const i=e.target.dataset.idx; players[i].status = (players[i].status==='Playing')?'Sub':'Playing'; renderPlayers(); updateUI();
+    const i=e.target.dataset.idx; players[i].status = (players[i].status==='Playing')?'Sub':'Playing';
+    if(players[i].status==='Playing'){ players[i].playedThisSet=true; }
+    renderPlayers(); updateUI();
     pushHistory({event:'toggle_status',i,status:players[i].status}); logEvent('toggle_status',{name:players[i].name,status:players[i].status});
   }));
-  tbody.querySelectorAll('.pmini').forEach(el=>el.addEventListener('input',e=>{
-    const i=e.target.dataset.idx; const v=parseFloat(e.target.value); players[i].mini = isNaN(v)?players[i].mini:clamp(v,0,1); updateUI();
-    pushHistory({event:'set_mini',i,value:players[i].mini}); logEvent('set_mini',{name:players[i].name,mini:players[i].mini});
+  tbody.querySelectorAll('.ppa').forEach(el=>el.addEventListener('input',e=>{
+    const i=e.target.dataset.idx; const v=parseFloat(e.target.value); players[i].pa = isNaN(v)?players[i].pa:clamp(v,0,1); updateUI();
+    pushHistory({event:'set_pa',i,value:players[i].pa}); logEvent('set_pa',{name:players[i].name,pa:players[i].pa});
   }));
   tbody.querySelectorAll('[data-delta]').forEach(el=>el.addEventListener('click',e=>{
-    const i=e.target.dataset.idx; const d=parseFloat(e.target.dataset.delta); players[i].mini = clamp((players[i].mini||0)+d,0,1); renderPlayers(); updateUI();
-    pushHistory({event:'nudge_mini',i,delta:d}); logEvent('nudge_mini',{name:players[i].name,delta:d,mini:players[i].mini});
+    const i=e.target.dataset.idx; const d=parseFloat(e.target.dataset.delta); players[i].pa = clamp((players[i].pa||0)+d,0,1);
+    if(d>0 && players[i].status==='Playing'){ players[i].playedThisSet=true; }
+    renderPlayers(); updateUI();
+    pushHistory({event:'nudge_pa',i,delta:d}); logEvent('nudge_pa',{name:players[i].name,delta:d,pa:players[i].pa});
   }));
 }
-
 function exportCSV(){
-  const headers=['timestamp','type','us','them','m','w','c','r','k','B_team','B_players','B_raw','B_final','mode','wTeam'];
+  // Build dynamic headers including PA columns
+  const baseHeaders=['timestamp','set','type','us','them','m','w','c','r','k','B_team','B_players','B_raw','B_final','mode','wTeam','fatigueStep','benchDecay'];
+  const paHeaders = players.map(p => 'PA_'+p.name);
+  const headers=[...baseHeaders, ...paHeaders];
   const rows=[headers.join(',')];
   eventLog.forEach(e=>{
     const line=headers.map(h=> (e[h]!==undefined? e[h] : '')).join(',');
@@ -408,8 +489,6 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-
-// Bind events
 window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('win3').addEventListener('click',()=>rally('win','3'));
   document.getElementById('win2').addEventListener('click',()=>rally('win','2'));
@@ -421,6 +500,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('closeErr').addEventListener('click',()=>{closeErrSheet();});
   document.getElementById('undo').addEventListener('click',undo);
   document.getElementById('reset').addEventListener('click',resetAll);
+  document.getElementById('nextSet').addEventListener('click',nextSet);
   document.getElementById('exportCsv').addEventListener('click',exportCSV);
   document.getElementById('mChip').addEventListener('click',()=>cycle('m'));
   document.getElementById('wChip').addEventListener('click',()=>cycle('w'));
@@ -429,8 +509,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('kChip').addEventListener('click',()=>cycle('k'));
   document.getElementById('subHint').addEventListener('click',()=>{
     const B=bFinal();
-    const on = players.filter(p=>p.status==='Playing').map(p=>({name:p.name,val:p.mini}));
-    const bench = players.filter(p=>p.status==='Sub').map(p=>({name:p.name,val:p.mini}));
+    const on = players.filter(p=>p.status==='Playing').map(p=>({name:p.name,val:p.pa,consec:p.consec}));
+    const bench = players.filter(p=>p.status==='Sub').map(p=>({name:p.name,val:p.pa,consec:p.consec}));
     let msg='';
     if(on.length===0||bench.length===0){
       msg='Mark Playing/Sub to get a hint.';
@@ -438,24 +518,26 @@ window.addEventListener('DOMContentLoaded',()=>{
       on.sort((a,b)=>a.val-b.val);
       bench.sort((a,b)=>b.val-a.val);
       if (B < 0.35){
-        msg=`B=${B.toFixed(2)} (low). Swap OUT: ${on[0].name} (${on[0].val.toFixed(2)}) ↔ IN: ${bench[0].name} (${bench[0].val.toFixed(2)}).`;
+        msg=`B=${B.toFixed(2)} (low). Swap OUT: ${on[0].name} (${on[0].val.toFixed(2)}, consec ${on[0].consec}) ↔ IN: ${bench[0].name} (${bench[0].val.toFixed(2)}, consec ${bench[0].consec}).`;
       } else if (B >= 0.65){
-        msg=`B=${B.toFixed(2)} (high). Ride hot hand; sub only for fatigue/role. Lowest on‑court: ${on[0].name} (${on[0].val.toFixed(2)}).`;
+        msg=`B=${B.toFixed(2)} (high). Ride hot hand; sub only for fatigue/role. Lowest on‑court: ${on[0].name} (${on[0].val.toFixed(2)}, consec ${on[0].consec}).`;
       } else {
         msg=`B=${B.toFixed(2)} (standard). Situational sub. Lowest on‑court: ${on[0].name}; best bench: ${bench[0].name}.`;
       }
     }
     document.getElementById('hint').textContent=msg;
   });
-  document.getElementById('usePlayers').addEventListener('change',()=>{ pushHistory({event:'toggle_usePlayers',value:document.getElementById('usePlayers').checked}); logEvent('toggle_usePlayers',{value:document.getElementById('usePlayers').checked}); updateUI(); });
-  document.getElementById('wTeam').addEventListener('input',e=>{ wTeam=parseFloat(e.target.value)||0; pushHistory({event:'set_wTeam',value:wTeam}); logEvent('set_wTeam',{value:wTeam}); updateUI(); });
+  document.getElementById('usePlayers').addEventListener('change',updateUI);
+  document.getElementById('wTeam').addEventListener('input',e=>{ wTeam=parseFloat(e.target.value)||0; updateUI(); });
   document.querySelectorAll('#modeSeg button').forEach(btn=>{
     btn.addEventListener('click',()=>{
       document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active'); mode=btn.dataset.mode;
-      pushHistory({event:'set_mode',mode}); logEvent('set_mode',{mode}); updateUI();
+      updateUI();
     });
   });
+  document.getElementById('fatigueStep').addEventListener('input',e=>{ fatigueStep=parseFloat(e.target.value)||0; updateControlsText(); renderPlayers(); updateUI(); });
+  document.getElementById('benchDecay').addEventListener('input',e=>{ benchDecay=parseFloat(e.target.value)||0; updateControlsText(); });
   renderPlayers(); updateUI();
 });
 </script>
